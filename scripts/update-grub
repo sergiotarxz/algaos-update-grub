@@ -95,6 +95,7 @@ update-grub [--help|-h] [--norecovery] [--noroot] [--user foo --user bar] [--liv
 --live: Creates a grub that tries to boot a live system. (Not recommended for final users, voids your warranty)
 --new-pass: Changes your grub password, be sure to remember it.
 --target-device: Selects the harddisk to use to search for AlgaOS, update-grub will make its best guess if not sent. (Example: /dev/sda)
+--noprotect: Disables password in grub dangerous options
 --chroot: Writes the grub to other root. (Not covered by warranty, used for livecd)
 ";
 }
