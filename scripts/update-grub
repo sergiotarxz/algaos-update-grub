@@ -8,75 +8,83 @@ use Getopt::Long;
 use AlgaOS::UpdateGrub;
 
 my $help;
-my $recovery = 1;
-my $root = 1;
-my $live = 0;
-my $protect = 1;
+my $recovery  = 1;
+my $root      = 1;
+my $live      = 0;
+my $protect   = 1;
 my $user_list = ['admin'];
 my $target_device;
 my $chroot;
+my $new_pass;
 
 Getopt::Long::Configure( "bundling", "no_ignore_case" );
 GetOptions(
-    'help|h'    => \$help,
-    'recovery!' => \$recovery,
-    'root!'     => \$root,
-    'live'      => \$live,
-    'protect!'   => \$protect,
-    'new-pass' => \$new_pass,
-    'user=s@' => $user_list,
+    'help|h'          => \$help,
+    'recovery!'       => \$recovery,
+    'root!'           => \$root,
+    'live'            => \$live,
+    'protect!'        => \$protect,
+    'new-pass'        => \$new_pass,
+    'user=s@'         => $user_list,
     'target-device=s' => \$target_device,
-    'chroot=s' => \$chroot,
+    'chroot=s'        => \$chroot,
 );
+
+if ( $< ne 0 ) {
+    die 'Must be root';
+    exit -1;
+}
 
 if ($help) {
     show_help();
     exit 0;
 }
 
-if ($live && !$chroot) {
-    say STDERR '--live without --chroot is non sense, do not continue if you do not know what you are doing';
+if ( $live && !$chroot ) {
+    say STDERR
+'--live without --chroot is non sense, do not continue if you do not know what you are doing';
     show_help();
     exit -1;
 }
 
-if ($root && !$protect && $recovery) {
-    say STDERR 'Not having password in grub and having recovery and root makes your data very easily accesible without even using an external device, giving you 10 seconds to think about it, press ctrl+c to interrupt if unsure';
+if ( $root && !$protect && $recovery ) {
+    say STDERR
+'Not having password in grub and having recovery and root makes your data very easily accesible without even using an external device, giving you 10 seconds to think about it, press ctrl+c to interrupt if unsure';
     sleep 10;
 }
 
 my $probable_root = `findmnt -n -o SOURCE /`;
-if (!$target_device && $probable_root =~ /loop/) {
-    say STDERR 'You are not in the destination install, you need --target-device, also if you do not know what you are doing do not continue';
+if ( !$live && !$target_device && $probable_root =~ /(?:loop|rootfs)/ ) {
+    say STDERR
+'You are not in the destination install, you need --target-device, also if you do not know what you are doing do not continue';
     show_help();
     exit -1;
 }
 
+say $live;
 AlgaOS::UpdateGrub->new(
-    search_recovery => $recovery,
-    search_root => $root,
-    search_live_cd_rootfs => $livecd,
+    search_recovery                 => $recovery,
+    search_root                     => $root,
+    search_live_cd_rootfs           => $live,
     wants_pass_in_sensitive_options => $protect,
-    user_list => $user_list,
+    user_list                       => $user_list,
     (
-        defined $new_pass
-        ? ( change_to_pass => $new_pass )
+        defined $new_pass ? ( change_to_pass => $new_pass )
         : ()
     ),
     (
-        defined $chroot
-        ? (root_dir => $chroot)
+        defined $chroot ? ( root_dir => $chroot )
         : ()
     ),
     (
-        defined $target_device
-        ? ( target_device => $target_device )
+        defined $target_device ? ( target_device => $target_device )
         : ()
     ),
 )->run;
 
 sub show_help {
-    say STDERR "IF YOU DO NOT KNOW WHAT YOU ARE DOING DO NOT DIRECTLY RUN THIS COMMAND AND ASK FOR HELP INSTEAD.
+    say STDERR
+"IF YOU DO NOT KNOW WHAT YOU ARE DOING DO NOT DIRECTLY RUN THIS COMMAND AND ASK FOR HELP INSTEAD.
 
 update-grub [--help|-h] [--norecovery] [--noroot] [--user foo --user bar] [--live] [--noprotect] [--new-pass <new password for grub sensitive fields>] [--target-device <path to disk>] [--chroot <New root to put grub on>]
 
