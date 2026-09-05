@@ -24,7 +24,7 @@ GetOptions(
     'root!'           => \$root,
     'live'            => \$live,
     'protect!'        => \$protect,
-    'new-pass'        => \$new_pass,
+    'new-pass=s'        => \$new_pass,
     'user=s@'         => $user_list,
     'target-device=s' => \$target_device,
     'chroot=s'        => \$chroot,

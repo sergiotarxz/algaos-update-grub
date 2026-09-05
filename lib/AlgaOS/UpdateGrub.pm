@@ -79,10 +79,10 @@ EOF
     if ( $self->wants_pass_in_sensitive_options
         && !$self->search_live_cd_rootfs )
     {
-        my $really_wants_pass = 1;
+        $really_wants_pass = 1;
         my $hash_complete     = $self->_create_or_find_grub_hash;
         say $fh <<"EOF";
-set superusers="admin"
+set superusers="@{[join ',', @{$self->user_list}]}"
 password_pbkdf2 admin grub.pbkdf2.sha512.$hash_complete
 EOF
     }
@@ -112,10 +112,10 @@ EOF
         die "No AlgaOSRecovery in that device" if !$devices{AlgaOSRecovery};
         my $recovery_title =
           $self->search_root ? 'AlgaOS Recovery' : 'Install AlgaOS now';
-        if ( system qw{mount /recovery} ) {
+        if ( $self->root_dir eq '/' && system qw{mount /recovery} ) {
             die 'Unable to mount /recovery';
         }
-        my @rootfs = glob '/recovery/*rootfs*.squashfs';
+        my @rootfs = glob $self->root_dir.'/recovery/*rootfs*.squashfs';
         for my $rootfs (@rootfs) {
             my $tmp_dir = '/tmp/rootfs-uncompression';
             system qw{rm -rf},    $tmp_dir;
@@ -123,16 +123,19 @@ EOF
             system( 'unsquashfs', '-d', $tmp_dir, $rootfs, 'boot/kernel-*',
                 'boot/initramfs-*', ) == 0
               or die "unsquashfs failed for $rootfs: $?";
-            my ($kernel)   = glob "$tmp_dir/kernel-*";
-            my $kver       = $kernel =~ s{.*/kernel-}{}r;
-            my $initramfs  = "$tmp_dir/initramfs-$kver.img";
+            my ($kernel)   = glob "$tmp_dir/boot/kernel-*";
+            my $kver       = $kernel =~ s{^.*kernel-}{}r;
+            my $initramfs  = "$tmp_dir/boot/initramfs-$kver.img";
             my $rootfs_ver = $rootfs =~ s/\.squashfs$//r;
+            $rootfs_ver = $rootfs_ver =~ s/^.*\///r;
 
-            if ( system qw{cp}, $kernel, "/boot/recovery/kernel-$rootfs_ver" ) {
+            system qw{mkdir -pv},    $self->root_dir.'/boot/recovery/';
+            system "rm -rf ". $self->root_dir.'/boot/recovery/*';
+            if ( system qw{cp}, $kernel, $self->root_dir."/boot/recovery/kernel-$rootfs_ver" ) {
                 die 'Failed kernel copy';
             }
             if ( system qw{cp},
-                $initramfs, "/boot/recovery/initramfs-$rootfs_ver.img" )
+                $initramfs, $self->root_dir."/boot/recovery/initramfs-$rootfs_ver.img" )
             {
                 die 'Failed initramfs copy';
             }
@@ -167,7 +170,7 @@ EOF
 
 sub _create_or_find_grub_hash($self) {
     if ( !$self->change_to_pass ) {
-        open my $fh, '<', '/grub_hash' or die 'No grub hash and no pass sent';
+        open my $fh, '<', $self->root_dir.'/grub_hash' or die 'No grub hash and no pass sent';
         local $/ = undef;
         my $hash_complete = <$fh>;
         close $fh;
@@ -185,7 +188,7 @@ sub _create_or_find_grub_hash($self) {
 
     my $hash_complete = "$iterations.$salt_hex.$hash";
 
-    open my $fh, '>', '/grub_hash';
+    open my $fh, '>', $self->root_dir.'/grub_hash';
     print $fh $hash_complete;
     close $fh;
     return $hash_complete;
