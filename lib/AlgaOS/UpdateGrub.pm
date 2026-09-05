@@ -80,10 +80,13 @@ EOF
         && !$self->search_live_cd_rootfs )
     {
         $really_wants_pass = 1;
-        my $hash_complete     = $self->_create_or_find_grub_hash;
+        my $hash_complete = $self->_create_or_find_grub_hash;
         say $fh <<"EOF";
 set superusers="@{[join ',', @{$self->user_list}]}"
-password_pbkdf2 admin grub.pbkdf2.sha512.$hash_complete
+
+@{[
+	join "\n\n", map { "password_pbkdf2 $_ grub.pbkdf2.sha512.$hash_complete" } @{$self->user_list}
+]}
 EOF
     }
     my %devices;
@@ -115,7 +118,7 @@ EOF
         if ( $self->root_dir eq '/' && system qw{mount /recovery} ) {
             die 'Unable to mount /recovery';
         }
-        my @rootfs = glob $self->root_dir.'/recovery/*rootfs*.squashfs';
+        my @rootfs = glob $self->root_dir . '/recovery/*rootfs*.squashfs';
         for my $rootfs (@rootfs) {
             my $tmp_dir = '/tmp/rootfs-uncompression';
             system qw{rm -rf},    $tmp_dir;
@@ -129,13 +132,16 @@ EOF
             my $rootfs_ver = $rootfs =~ s/\.squashfs$//r;
             $rootfs_ver = $rootfs_ver =~ s/^.*\///r;
 
-            system qw{mkdir -pv},    $self->root_dir.'/boot/recovery/';
-            system "rm -rf ". $self->root_dir.'/boot/recovery/*';
-            if ( system qw{cp}, $kernel, $self->root_dir."/boot/recovery/kernel-$rootfs_ver" ) {
+            system qw{mkdir -pv}, $self->root_dir . '/boot/recovery/';
+            system "rm -rf " . $self->root_dir . '/boot/recovery/*';
+            if ( system qw{cp},
+                $kernel, $self->root_dir . "/boot/recovery/kernel-$rootfs_ver" )
+            {
                 die 'Failed kernel copy';
             }
             if ( system qw{cp},
-                $initramfs, $self->root_dir."/boot/recovery/initramfs-$rootfs_ver.img" )
+                $initramfs,
+                $self->root_dir . "/boot/recovery/initramfs-$rootfs_ver.img" )
             {
                 die 'Failed initramfs copy';
             }
@@ -170,7 +176,8 @@ EOF
 
 sub _create_or_find_grub_hash($self) {
     if ( !$self->change_to_pass ) {
-        open my $fh, '<', $self->root_dir.'/grub_hash' or die 'No grub hash and no pass sent';
+        open my $fh, '<', $self->root_dir . '/grub_hash'
+          or die 'No grub hash and no pass sent';
         local $/ = undef;
         my $hash_complete = <$fh>;
         close $fh;
@@ -188,7 +195,7 @@ sub _create_or_find_grub_hash($self) {
 
     my $hash_complete = "$iterations.$salt_hex.$hash";
 
-    open my $fh, '>', $self->root_dir.'/grub_hash';
+    open my $fh, '>', $self->root_dir . '/grub_hash';
     print $fh $hash_complete;
     close $fh;
     return $hash_complete;
