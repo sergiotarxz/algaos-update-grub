@@ -95,7 +95,30 @@ EOF
         die "Live booting and root requested at once"
           if $self->search_live_cd_rootfs;
         die "No AlgaOSRoot in that device" if !$devices{AlgaOSRoot};
-        for my $kver ( reverse glob( $self->root_dir . "/boot/kernel-*" ) ) {
+        my $sort_kernel = sub($a, $b) {
+            my ($kernel_version_a) = $a =~ m{/kernel-(\d+(?:\.\d+)*)};
+            my ($kernel_version_b) = $b =~ m{/kernel-(\d+(?:\.\d+)*)};
+
+            my @version_a = split /\./, $kernel_version_a;
+            my @version_b = split /\./, $kernel_version_b;
+
+            my $component_count = @version_a > @version_b
+                ? @version_a
+                : @version_b;
+
+            for my $component_index (0 .. $component_count - 1) {
+                my $comparison =
+                    ($version_a[$component_index] // 0)
+                    <=>
+                    ($version_b[$component_index] // 0);
+
+                return -$comparison if $comparison;
+            }
+
+            return 0;
+
+    }       
+    for my $kver ( sort { $sort_kernel->($a, $b) } glob( $self->root_dir . "/boot/kernel-*" ) ) {
             die "No kernel found in /boot\n" unless $kver;
 
             $kver =~ s{.*/kernel-}{};
