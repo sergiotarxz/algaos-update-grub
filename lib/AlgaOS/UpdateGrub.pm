@@ -117,7 +117,7 @@ EOF
 
             return 0;
 
-    }       
+    };       
     for my $kver ( sort { $sort_kernel->($a, $b) } glob( $self->root_dir . "/boot/kernel-*" ) ) {
             die "No kernel found in /boot\n" unless $kver;
 
