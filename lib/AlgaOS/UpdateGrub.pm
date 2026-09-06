@@ -95,7 +95,7 @@ EOF
         die "Live booting and root requested at once"
           if $self->search_live_cd_rootfs;
         die "No AlgaOSRoot in that device" if !$devices{AlgaOSRoot};
-        for my $kver ( glob( $self->root_dir . "/boot/kernel-*" ) ) {
+        for my $kver ( reverse glob( $self->root_dir . "/boot/kernel-*" ) ) {
             die "No kernel found in /boot\n" unless $kver;
 
             $kver =~ s{.*/kernel-}{};
