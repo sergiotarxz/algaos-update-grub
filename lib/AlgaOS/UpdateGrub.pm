@@ -147,7 +147,7 @@ menuentry "[Arranque de terminal, encuentra problemas] AlgaOS ($kver)" $security
 };
 EOF
         }
-        say "}";
+        say $fh "}";
     }
     if ( $self->search_recovery ) {
         %devices = %{ $self->_devices };
