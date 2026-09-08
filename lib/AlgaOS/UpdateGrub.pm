@@ -118,20 +118,36 @@ EOF
         die "Live booting and root requested at once"
           if $self->search_live_cd_rootfs;
         die "No AlgaOSRoot in that device" if !$devices{AlgaOSRoot};
-        for my $kver ( sort { $sort_kernel->( $a, $b ) }
-            glob( $self->root_dir . "/boot/kernel-*" ) )
-        {
+        my @kvers = sort { $sort_kernel->( $a, $b ) }
+          glob( $self->root_dir . "/boot/kernel-*" );
+        my ($kver) = @kvers;
+        my $security_string = $really_wants_pass ? '--unrestricted' : '';
+        say $fh <<"EOF";
+menuentry "AlgaOS" $security_string {
+    linux /boot/kernel-$kver root=PARTUUID=$devices{AlgaOSRoot} splash quiet
+    initrd /boot/initramfs-$kver.img
+};
+
+submenu "En caso de error tras actualizar, prueba estas opciones" {
+EOF
+        for my $kver (@kvers) {
             die "No kernel found in /boot\n" unless $kver;
 
             $kver =~ s{.*/kernel-}{};
             my $security_string = $really_wants_pass ? '--unrestricted' : '';
             say $fh <<"EOF";
-menuentry "AlgaOS" $security_string {
+menuentry "AlgaOS ($kver)" $security_string {
     linux /boot/kernel-$kver root=PARTUUID=$devices{AlgaOSRoot} splash quiet
+    initrd /boot/initramfs-$kver.img
+};
+
+menuentry "[Arranque de terminal, encuentra problemas] AlgaOS ($kver)" $security_string {
+    linux /boot/kernel-$kver root=PARTUUID=$devices{AlgaOSRoot}
     initrd /boot/initramfs-$kver.img
 };
 EOF
         }
+        say "}";
     }
     if ( $self->search_recovery ) {
         %devices = %{ $self->_devices };
@@ -178,7 +194,7 @@ EOF
               ? '--users ' . ( join ',', @{ $self->user_list } )
               : '';
             say $fh <<"EOF";
-menuentry "AlgaOS Recovery" $security_string {
+menuentry "Recupera o Reinstala AlgaOS" $security_string {
     linux /boot/recovery/kernel-$rootfs_ver root=live:PARTUUID=$devices{AlgaOSRecovery} rd.live.dir=/ rd.live.squashimg=$rootfs_ver.squashfs rd.live.overlay.overlayfs=1 rd.live.debug=1 rd.systemd.show_status=1 rd.systemd.log_level=debug splash quiet
     initrd /boot/recovery/initramfs-$rootfs_ver.img
 };
