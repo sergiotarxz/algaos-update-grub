@@ -12,10 +12,17 @@ my $recovery  = 1;
 my $root      = 1;
 my $live      = 0;
 my $protect   = 1;
-my $user_list = ['admin'];
+my @users;
+{
+    open my $fh, '<', $self->root_dir . '/grub_users';
+    my $/ = undef;
+    @users = split /\s*,\s*/, <$fh>;
+}
+my $user_list = ['admin', @users];
 my $target_device;
 my $chroot;
 my $new_pass;
+my $new_user_list = [];
 
 Getopt::Long::Configure( "bundling", "no_ignore_case" );
 GetOptions(
@@ -25,7 +32,7 @@ GetOptions(
     'live'            => \$live,
     'protect!'        => \$protect,
     'new-pass=s'        => \$new_pass,
-    'user=s@'         => $user_list,
+    'user=s@'         => $new_user_list,
     'target-device=s' => \$target_device,
     'chroot=s'        => \$chroot,
 );
@@ -45,6 +52,16 @@ if ( $live && !$chroot ) {
 '--live without --chroot is non sense, do not continue if you do not know what you are doing';
     show_help();
     exit -1;
+}
+
+if (@$new_user_list) {
+    my %users = (map { ($_ => 1) } @$user_list);
+    for my $user (@$new_user_list) {
+        open my $fh, '>', '/grub_users';
+        print $fh ",$user";
+    }
+    %users = (%users, map { $_ => 1 } @$new_user_list);
+    $user_list = [keys %users];
 }
 
 if ( $root && !$protect && $recovery ) {

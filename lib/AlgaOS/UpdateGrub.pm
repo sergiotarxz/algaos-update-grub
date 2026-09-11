@@ -63,7 +63,7 @@ sub _build_wants_pass_in_sensitive_options {
 }
 
 sub _build_user_list {
-    return [qw/admin/];
+    return [qw/admin/, @users];
 }
 
 sub run($self) {
@@ -200,6 +200,24 @@ menuentry "Recupera o Reinstala AlgaOS" $security_string {
     initrd /boot/recovery/initramfs-$rootfs_ver.img
 }
 EOF
+        }
+        if ( $self->search_recovery || $self->search_root ) {
+            say 'Attempting grub install';
+            if ( system qw{grub-install --target=i386-pc --recheck},
+                $self->target_device )
+            {
+                die 'Failed grub installation for i386';
+            }
+            if (
+                system qw{grub-install
+                --target=x86_64-efi
+                --efi-directory=/boot/efi
+                --removable}
+              )
+            {
+                die 'Failed grub installation for efi';
+            }
+
         }
 
     }
